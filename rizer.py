@@ -6,7 +6,7 @@ RIZERxPROFILE - Web Dashboard (Final)
 Stylish all-in-one Flask application with top menu, dynamic forms, and social credits.
 Compatible with Vercel serverless & local dev (0.0.0.0:8080)
 Author: RIZERxPROFILE
-Version: 2.4
+Version: 2.5 (Guild Manager & All APIs added)
 """
 
 import sys
@@ -29,6 +29,9 @@ GUEST_TO_CREDS_URL = "https://rizerxguestaccountacceee.vercel.app//rizer"
 # Long Bio URLs
 LONG_BIO_GUEST_URL = "https://cleint-bio-changer.vercel.app/bio_upload"
 LONG_BIO_JWT_URL = "https://cleint-bio-changer.vercel.app/bio_upload"
+
+# Guild Manager Base URL
+GUILD_BASE_URL = "https://rizerxguildmanager.vercel.app"
 
 # ========================== UTILITY FUNCTIONS ==========================
 def format_api_response(response_data):
@@ -77,6 +80,7 @@ def send_request(url, params=None, method="GET"):
     except Exception as e:
         return f"Unexpected error: {str(e)}"
 
+# ---------- Existing Functions ----------
 def guest_login(uid, password):
     return send_request(GUEST_ADD_URL, {"uid": uid, "password": password, "itemid": ITEM_ID})
 
@@ -98,6 +102,25 @@ def long_bio_guest(bio, uid, password):
 def long_bio_jwt(bio, jwt_token):
     return send_request(LONG_BIO_JWT_URL, {"bio": bio, "jwt": jwt_token}, method="GET")
 
+# ---------- Guild Manager Functions ----------
+def join_guild_jwt(clan_id, jwt_token):
+    return send_request(f"{GUILD_BASE_URL}/request_clan", {"clan_id": clan_id, "jwt": jwt_token})
+
+def join_guild_guest(clan_id, uid, password):
+    return send_request(f"{GUILD_BASE_URL}/request_clan", {"clan_id": clan_id, "uid": uid, "pass": password})
+
+def join_guild_access(clan_id, access_token):
+    return send_request(f"{GUILD_BASE_URL}/request_clan_access", {"clan_id": clan_id, "access_token": access_token})
+
+def leave_guild_jwt(clan_id, jwt_token):
+    return send_request(f"{GUILD_BASE_URL}/quit_clan", {"clan_id": clan_id, "jwt": jwt_token})
+
+def leave_guild_guest(clan_id, uid, password):
+    return send_request(f"{GUILD_BASE_URL}/quit_clan", {"clan_id": clan_id, "uid": uid, "pass": password})
+
+def leave_guild_access(clan_id, access_token):
+    return send_request(f"{GUILD_BASE_URL}/quit_clan_access", {"clan_id": clan_id, "access_token": access_token})
+
 # ========================== FLASK APP ==========================
 app = Flask(__name__)
 
@@ -107,6 +130,960 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RIZERxPROFILE | Ultimate Item Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at 10% 20%, rgba(0, 0, 0, 0.95), rgba(10, 5, 20, 0.98));
+            color: #eef5ff;
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 50%, rgba(255, 60, 172, 0.08), transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: pulseGlow 8s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.8; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.8s ease;
+        }
+        .hero h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF3CAC, #784BA0, #2B86C5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 12px rgba(255,60,172,0.4);
+            letter-spacing: -0.5px;
+        }
+        .hero .tag {
+            font-size: 1rem;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(5px);
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            margin-top: 0.8rem;
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .top-menu {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem;
+            margin-bottom: 2rem;
+            background: rgba(10, 8, 25, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            padding: 0.8rem 1.2rem;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .menu-btn {
+            background: transparent;
+            border: none;
+            color: #ddd;
+            font-weight: 600;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .menu-btn i {
+            font-size: 1rem;
+        }
+        .menu-btn.active {
+            background: linear-gradient(95deg, #FF3CAC, #784BA0);
+            color: white;
+            box-shadow: 0 0 8px rgba(255,60,172,0.6);
+        }
+        .menu-btn:hover:not(.active) {
+            background: rgba(255, 60, 172, 0.2);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .card {
+            background: rgba(15, 10, 30, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            transition: all 0.3s;
+            margin-bottom: 2rem;
+        }
+        .card-header {
+            padding: 1.4rem 1.8rem;
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-header i {
+            font-size: 1.9rem;
+        }
+        .card-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .card-body {
+            padding: 1.8rem;
+        }
+        .input-group {
+            margin-bottom: 1.3rem;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #cdc9ff;
+        }
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 12px 18px;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            color: white;
+            font-family: 'Inter', monospace;
+            transition: all 0.2s;
+        }
+        .input-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #FF3CAC;
+            box-shadow: 0 0 0 3px rgba(255,60,172,0.3);
+        }
+        .method-toggle {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+        .method-btn {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 0.8rem;
+            border-radius: 40px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.2s;
+            color: #ccc;
+        }
+        .method-btn.active {
+            background: linear-gradient(95deg, #FF3CAC, #784BA0);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 0 12px rgba(255,60,172,0.5);
+        }
+        .method-btn i {
+            margin-right: 8px;
+        }
+        .action-toggle {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+        .action-btn {
+            flex: 1;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 0.8rem;
+            border-radius: 40px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.2s;
+            color: #ccc;
+        }
+        .action-btn.active {
+            background: linear-gradient(95deg, #FF3CAC, #784BA0);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 0 12px rgba(255,60,172,0.5);
+        }
+        button.submit-btn {
+            width: 100%;
+            background: linear-gradient(95deg, #FF3CAC, #784BA0);
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 1rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.25s;
+            margin-top: 12px;
+        }
+        button.submit-btn:hover {
+            transform: scale(0.98);
+            background: linear-gradient(95deg, #ff57b9, #8f63c7);
+        }
+        .result-area {
+            margin-top: 1.5rem;
+            background: #0a0518cc;
+            border-radius: 24px;
+            padding: 1rem;
+            border: 1px solid rgba(255,255,255,0.15);
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .loading {
+            color: #ffbf69;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .error-text {
+            color: #ff8383;
+            border-left: 3px solid #ff3c3c;
+            padding-left: 10px;
+        }
+        .credits {
+            text-align: center;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: rgba(0,0,0,0.4);
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+        }
+        .credits p {
+            margin-bottom: 0.8rem;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        .social-icons {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .social-icons a {
+            color: #fff;
+            font-size: 1.8rem;
+            transition: transform 0.2s, color 0.2s;
+            display: inline-block;
+        }
+        .social-icons a:hover {
+            transform: scale(1.1);
+            color: #FF3CAC;
+        }
+        footer {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+
+        .api-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .api-item {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 1rem;
+            border-left: 4px solid #FF3CAC;
+        }
+        .api-endpoint {
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #FFB86C;
+        }
+        .api-desc {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 700px) {
+            body { padding: 1rem; }
+            .hero h1 { font-size: 2.2rem; }
+            .menu-btn { padding: 0.4rem 0.8rem; font-size: 0.75rem; }
+            .method-btn { font-size: 0.8rem; padding: 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="hero">
+        <h1><i class="fas fa-crown"></i> RIZERxPROFILE</h1>
+        <div class="tag"><i class="fas fa-bolt"></i> ITEM MANAGER & LONG BIO & GUILD MANAGER</div>
+    </div>
+
+    <!-- Top Menu -->
+    <div class="top-menu">
+        <button class="menu-btn active" data-feature="guest"><i class="fas fa-user-secret"></i> GUEST ITEM ADD</button>
+        <button class="menu-btn" data-feature="jwt"><i class="fas fa-token"></i> JWT ITEM ADD</button>
+        <button class="menu-btn" data-feature="access"><i class="fas fa-key"></i> ACCESS TOKEN ITEM ADD</button>
+        <button class="menu-btn" data-feature="accessToJwt"><i class="fas fa-exchange-alt"></i> ACCESS → JWT</button>
+        <button class="menu-btn" data-feature="guestToCreds"><i class="fas fa-dna"></i> GUEST → TOKENS</button>
+        <button class="menu-btn" data-feature="longBio"><i class="fas fa-paragraph"></i> LONG BIO</button>
+        <button class="menu-btn" data-feature="guildManager"><i class="fas fa-users"></i> GUILD MANAGER</button>
+        <button class="menu-btn" data-feature="allApis"><i class="fas fa-list-ul"></i> ALL APIS</button>
+    </div>
+
+    <!-- Dynamic Form Area -->
+    <div id="dynamicForm" class="card">
+        <div class="card-header">
+            <i id="formIcon" class="fas fa-user-secret"></i>
+            <h2 id="formTitle">GUEST ITEM ADD</h2>
+        </div>
+        <div class="card-body" id="formBody">
+            <!-- Forms will be injected here -->
+        </div>
+    </div>
+
+    <!-- Credits Section -->
+    <div class="credits">
+        <p><strong>OWNER & DEVELOPER</strong><br>RIZERxPROFILE</p>
+        <div class="social-icons">
+            <a href="https://t.me/Beotherjk" target="_blank" title="Telegram Profile"><i class="fab fa-telegram"></i></a>
+            <a href="https://t.me/beotherjkman" target="_blank" title="Telegram Channel"><i class="fab fa-telegram-plane"></i></a>
+            <a href="https://t.me/beotherjkmans" target="_blank" title="Telegram Group"><i class="fab fa-telegram"></i><span style="font-size:0.8rem;"> Group</span></a>
+            <a href="https://www.youtube.com/@darkdevil14890" target="_blank" title="YouTube"><i class="fab fa-youtube"></i></a>
+            <a href="https://www.tiktok.com/@darkdevil148990" target="_blank" title="TikTok"><i class="fab fa-tiktok"></i></a>
+        </div>
+        <p style="margin-top: 0.5rem; font-size:0.8rem;">Telegram: @Beotherjk | Channel: @beotherjkman | Group: @beotherjkmans</p>
+    </div>
+    <footer>
+        <i class="fas fa-shield-alt"></i> RIZERxPROFILE • All-in-one • No extra files
+    </footer>
+</div>
+
+<script>
+    let currentFeature = 'guest';
+
+    function loadFeature(feature) {
+        currentFeature = feature;
+        fetch(`/api/get_form?feature=${feature}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('formIcon').className = data.icon;
+                document.getElementById('formTitle').innerText = data.title;
+                document.getElementById('formBody').innerHTML = data.html;
+                attachFormHandlers(feature);
+            })
+            .catch(err => console.error('Error loading form:', err));
+    }
+
+    function attachFormHandlers(feature) {
+        if (feature === 'guest') {
+            const btn = document.getElementById('submitGuest');
+            if (btn) btn.onclick = () => {
+                const uid = document.getElementById('guestUid').value.trim();
+                const pwd = document.getElementById('guestPwd').value;
+                if (!uid || !pwd) return showResult('guestResult', 'UID and Password required', true);
+                callApi('/api/guest_login', { uid, password: pwd }, 'guestResult', 'Authenticating...');
+            };
+        } else if (feature === 'jwt') {
+            const btn = document.getElementById('submitJwt');
+            if (btn) btn.onclick = () => {
+                const token = document.getElementById('jwtToken').value.trim();
+                if (!token) return showResult('jwtResult', 'JWT token required', true);
+                callApi('/api/jwt_login', { token }, 'jwtResult', 'Verifying...');
+            };
+        } else if (feature === 'access') {
+            const btn = document.getElementById('submitAccess');
+            if (btn) btn.onclick = () => {
+                const token = document.getElementById('accessToken').value.trim();
+                if (!token) return showResult('accessResult', 'Access token required', true);
+                callApi('/api/access_login', { access_token: token }, 'accessResult', 'Processing...');
+            };
+        } else if (feature === 'accessToJwt') {
+            const btn = document.getElementById('submitAccessToJwt');
+            if (btn) btn.onclick = () => {
+                const token = document.getElementById('accessToJwtInput').value.trim();
+                if (!token) return showResult('convertJwtResult', 'Access token required', true);
+                callApi('/api/access_to_jwt', { access_token: token }, 'convertJwtResult', 'Converting...');
+            };
+        } else if (feature === 'guestToCreds') {
+            const btn = document.getElementById('submitGuestToCreds');
+            if (btn) btn.onclick = () => {
+                const uid = document.getElementById('guestCredsUid').value.trim();
+                const pwd = document.getElementById('guestCredsPwd').value;
+                if (!uid || !pwd) return showResult('guestCredsResult', 'UID and Password required', true);
+                callApi('/api/guest_to_creds', { uid, password: pwd }, 'guestCredsResult', 'Generating...');
+            };
+        } else if (feature === 'longBio') {
+            // Attach method toggle buttons
+            const guestBtn = document.getElementById('methodGuest');
+            const jwtBtn = document.getElementById('methodJwt');
+            const guestFields = document.getElementById('guestFields');
+            const jwtFields = document.getElementById('jwtFields');
+            const submitBtn = document.getElementById('submitLongBio');
+            let currentMethod = 'guest'; // default
+
+            function updateMethod(method) {
+                currentMethod = method;
+                if (method === 'guest') {
+                    guestBtn.classList.add('active');
+                    jwtBtn.classList.remove('active');
+                    guestFields.style.display = 'block';
+                    jwtFields.style.display = 'none';
+                } else {
+                    jwtBtn.classList.add('active');
+                    guestBtn.classList.remove('active');
+                    guestFields.style.display = 'none';
+                    jwtFields.style.display = 'block';
+                }
+            }
+
+            if (guestBtn && jwtBtn) {
+                guestBtn.onclick = () => updateMethod('guest');
+                jwtBtn.onclick = () => updateMethod('jwt');
+                // initial
+                updateMethod('guest');
+            }
+
+            if (submitBtn) {
+                submitBtn.onclick = () => {
+                    const bio = document.getElementById('bioText').value.trim();
+                    if (!bio) return showResult('longBioResult', 'Bio text required', true);
+                    if (currentMethod === 'guest') {
+                        const uid = document.getElementById('bioUid').value.trim();
+                        const pwd = document.getElementById('bioPwd').value;
+                        if (!uid || !pwd) return showResult('longBioResult', 'Guest UID and Password required', true);
+                        callApi('/api/long_bio_guest', { bio, uid, password: pwd }, 'longBioResult', 'Uploading bio (guest)...');
+                    } else {
+                        const jwt = document.getElementById('bioJwt').value.trim();
+                        if (!jwt) return showResult('longBioResult', 'JWT token required', true);
+                        callApi('/api/long_bio_jwt', { bio, jwt }, 'longBioResult', 'Uploading bio (JWT)...');
+                    }
+                };
+            }
+        } else if (feature === 'guildManager') {
+            // Setup action and method toggles
+            const joinBtn = document.getElementById('actionJoin');
+            const leaveBtn = document.getElementById('actionLeave');
+            const methodJwt = document.getElementById('guildMethodJwt');
+            const methodAccess = document.getElementById('guildMethodAccess');
+            const methodGuest = document.getElementById('guildMethodGuest');
+            const jwtFields = document.getElementById('guildJwtFields');
+            const accessFields = document.getElementById('guildAccessFields');
+            const guestFields = document.getElementById('guildGuestFields');
+            const submitBtn = document.getElementById('submitGuildAction');
+
+            let currentAction = 'join';
+            let currentMethod = 'jwt';
+
+            function updateAction(action) {
+                currentAction = action;
+                if (action === 'join') {
+                    joinBtn.classList.add('active');
+                    leaveBtn.classList.remove('active');
+                } else {
+                    leaveBtn.classList.add('active');
+                    joinBtn.classList.remove('active');
+                }
+            }
+
+            function updateMethod(method) {
+                currentMethod = method;
+                // Reset active class
+                methodJwt.classList.remove('active');
+                methodAccess.classList.remove('active');
+                methodGuest.classList.remove('active');
+                if (method === 'jwt') {
+                    methodJwt.classList.add('active');
+                    jwtFields.style.display = 'block';
+                    accessFields.style.display = 'none';
+                    guestFields.style.display = 'none';
+                } else if (method === 'access') {
+                    methodAccess.classList.add('active');
+                    jwtFields.style.display = 'none';
+                    accessFields.style.display = 'block';
+                    guestFields.style.display = 'none';
+                } else {
+                    methodGuest.classList.add('active');
+                    jwtFields.style.display = 'none';
+                    accessFields.style.display = 'none';
+                    guestFields.style.display = 'block';
+                }
+            }
+
+            if (joinBtn && leaveBtn) {
+                joinBtn.onclick = () => updateAction('join');
+                leaveBtn.onclick = () => updateAction('leave');
+            }
+            if (methodJwt && methodAccess && methodGuest) {
+                methodJwt.onclick = () => updateMethod('jwt');
+                methodAccess.onclick = () => updateMethod('access');
+                methodGuest.onclick = () => updateMethod('guest');
+            }
+
+            if (submitBtn) {
+                submitBtn.onclick = () => {
+                    const clanId = document.getElementById('clanId').value.trim();
+                    if (!clanId) return showResult('guildResult', 'Clan ID required', true);
+                    let payload = { action: currentAction, method: currentMethod, clan_id: clanId };
+                    if (currentMethod === 'jwt') {
+                        const token = document.getElementById('guildJwt').value.trim();
+                        if (!token) return showResult('guildResult', 'JWT token required', true);
+                        payload.token = token;
+                    } else if (currentMethod === 'access') {
+                        const token = document.getElementById('guildAccessToken').value.trim();
+                        if (!token) return showResult('guildResult', 'Access token required', true);
+                        payload.access_token = token;
+                    } else {
+                        const uid = document.getElementById('guildUid').value.trim();
+                        const pwd = document.getElementById('guildPwd').value;
+                        if (!uid || !pwd) return showResult('guildResult', 'UID and Password required', true);
+                        payload.uid = uid;
+                        payload.password = pwd;
+                    }
+                    callApi('/api/guild_action', payload, 'guildResult', 'Processing guild action...');
+                };
+            }
+        } else if (feature === 'allApis') {
+            // Nothing to attach, just static content
+        }
+    }
+
+    function showResult(elementId, message, isError = false) {
+        const el = document.getElementById(elementId);
+        if (el) {
+            if (isError) el.innerHTML = `<div class="error-text">${escapeHtml(message)}</div>`;
+            else el.innerHTML = `<div>${escapeHtml(message)}</div>`;
+        }
+    }
+
+    async function callApi(endpoint, payload, resultElementId, loadingMsg) {
+        const resultEl = document.getElementById(resultElementId);
+        if (!resultEl) return;
+        resultEl.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-pulse"></i> ${loadingMsg}</div>`;
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.error) {
+                resultEl.innerHTML = `<div class="error-text">Error: ${escapeHtml(data.error)}</div>`;
+            } else {
+                resultEl.innerHTML = `<pre style="margin:0; white-space:pre-wrap;">${escapeHtml(data.result)}</pre>`;
+            }
+        } catch (err) {
+            resultEl.innerHTML = `<div class="error-text">Request failed: ${err.message}</div>`;
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    document.querySelectorAll('.menu-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const feature = btn.getAttribute('data-feature');
+            if (feature === currentFeature) return;
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadFeature(feature);
+        });
+    });
+
+    loadFeature('guest');
+</script>
+</body>
+</html>
+"""
+
+# ---------- API ROUTES ----------
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/api/get_form', methods=['GET'])
+def get_form():
+    """Return HTML and metadata for the selected feature."""
+    feature = request.args.get('feature', 'guest')
+    forms = {
+        'guest': {
+            'icon': 'fas fa-user-secret',
+            'title': 'GUEST ITEM ADD',
+            'html': '''
+                <div class="input-group">
+                    <label><i class="fas fa-id-card"></i> UID</label>
+                    <input type="text" id="guestUid" placeholder="Enter Guest UID">
+                </div>
+                <div class="input-group">
+                    <label><i class="fas fa-key"></i> Password</label>
+                    <input type="password" id="guestPwd" placeholder="Guest Password">
+                </div>
+                <button class="submit-btn" id="submitGuest"><i class="fas fa-paper-plane"></i> ADD PROFILE</button>
+                <div class="result-area" id="guestResult">⚡ waiting for action...</div>
+            '''
+        },
+        'jwt': {
+            'icon': 'fas fa-token',
+            'title': 'JWT ITEM ADD',
+            'html': '''
+                <div class="input-group">
+                    <label>JWT Token</label>
+                    <input type="text" id="jwtToken" placeholder="eyJhbGciOiJIUzI1NiIs...">
+                </div>
+                <button class="submit-btn" id="submitJwt"><i class="fas fa-rocket"></i> ADD PROFILE</button>
+                <div class="result-area" id="jwtResult">✨ enter token and submit</div>
+            '''
+        },
+        'access': {
+            'icon': 'fas fa-key',
+            'title': 'ACCESS TOKEN ITEM ADD',
+            'html': '''
+                <div class="input-group">
+                    <label>Access Token</label>
+                    <input type="text" id="accessToken" placeholder="Access Token">
+                </div>
+                <button class="submit-btn" id="submitAccess"><i class="fas fa-arrow-right-to-bracket"></i> ADD PROFILE</button>
+                <div class="result-area" id="accessResult">🔑 paste access token</div>
+            '''
+        },
+        'accessToJwt': {
+            'icon': 'fas fa-exchange-alt',
+            'title': 'ACCESS → JWT',
+            'html': '''
+                <div class="input-group">
+                    <label>Access Token</label>
+                    <input type="text" id="accessToJwtInput" placeholder="access_token here">
+                </div>
+                <button class="submit-btn" id="submitAccessToJwt"><i class="fas fa-sync-alt"></i> CONVERT TO JWT</button>
+                <div class="result-area" id="convertJwtResult">⚙️ get JWT from access token</div>
+            '''
+        },
+        'guestToCreds': {
+            'icon': 'fas fa-dna',
+            'title': 'GUEST → TOKENS',
+            'html': '''
+                <div class="input-group">
+                    <label>Guest UID</label>
+                    <input type="text" id="guestCredsUid" placeholder="UID">
+                </div>
+                <div class="input-group">
+                    <label>Guest Password</label>
+                    <input type="password" id="guestCredsPwd" placeholder="Password">
+                </div>
+                <button class="submit-btn" id="submitGuestToCreds"><i class="fas fa-magic"></i> GET JWT & ACCESS</button>
+                <div class="result-area" id="guestCredsResult">🧪 generate JWT + access token</div>
+            '''
+        },
+        'longBio': {
+            'icon': 'fas fa-paragraph',
+            'title': 'LONG BIO',
+            'html': '''
+                <div class="method-toggle">
+                    <div id="methodGuest" class="method-btn active"><i class="fas fa-user"></i> Guest Credentials</div>
+                    <div id="methodJwt" class="method-btn"><i class="fas fa-token"></i> JWT Token</div>
+                </div>
+                <div class="input-group">
+                    <label>Bio Text</label>
+                    <textarea id="bioText" placeholder="Write your long bio here..."></textarea>
+                </div>
+                <div id="guestFields">
+                    <div class="input-group">
+                        <label>Guest UID</label>
+                        <input type="text" id="bioUid" placeholder="UID">
+                    </div>
+                    <div class="input-group">
+                        <label>Guest Password</label>
+                        <input type="password" id="bioPwd" placeholder="Password">
+                    </div>
+                </div>
+                <div id="jwtFields" style="display:none;">
+                    <div class="input-group">
+                        <label>JWT Token</label>
+                        <input type="text" id="bioJwt" placeholder="JWT token">
+                    </div>
+                </div>
+                <button class="submit-btn" id="submitLongBio"><i class="fas fa-cloud-upload-alt"></i> UPLOAD BIO</button>
+                <div class="result-area" id="longBioResult">📄 ready</div>
+            '''
+        },
+        'guildManager': {
+            'icon': 'fas fa-users',
+            'title': 'GUILD MANAGER',
+            'html': '''
+                <div class="action-toggle">
+                    <div id="actionJoin" class="action-btn active"><i class="fas fa-sign-in-alt"></i> JOIN CLAN</div>
+                    <div id="actionLeave" class="action-btn"><i class="fas fa-sign-out-alt"></i> LEAVE CLAN</div>
+                </div>
+                <div class="method-toggle">
+                    <div id="guildMethodJwt" class="method-btn active"><i class="fas fa-token"></i> JWT</div>
+                    <div id="guildMethodAccess" class="method-btn"><i class="fas fa-key"></i> ACCESS TOKEN</div>
+                    <div id="guildMethodGuest" class="method-btn"><i class="fas fa-user"></i> GUEST</div>
+                </div>
+                <div class="input-group">
+                    <label><i class="fas fa-trophy"></i> Clan ID</label>
+                    <input type="text" id="clanId" placeholder="Enter Clan/Guild ID">
+                </div>
+                <!-- JWT Fields -->
+                <div id="guildJwtFields">
+                    <div class="input-group">
+                        <label>JWT Token</label>
+                        <input type="text" id="guildJwt" placeholder="eyJhbGciOiJIUzI1NiIs...">
+                    </div>
+                </div>
+                <!-- Access Token Fields -->
+                <div id="guildAccessFields" style="display:none;">
+                    <div class="input-group">
+                        <label>Access Token</label>
+                        <input type="text" id="guildAccessToken" placeholder="Access token here">
+                    </div>
+                </div>
+                <!-- Guest Fields -->
+                <div id="guildGuestFields" style="display:none;">
+                    <div class="input-group">
+                        <label>Guest UID</label>
+                        <input type="text" id="guildUid" placeholder="UID">
+                    </div>
+                    <div class="input-group">
+                        <label>Guest Password</label>
+                        <input type="password" id="guildPwd" placeholder="Password">
+                    </div>
+                </div>
+                <button class="submit-btn" id="submitGuildAction"><i class="fas fa-arrow-right"></i> EXECUTE</button>
+                <div class="result-area" id="guildResult">⚙️ ready</div>
+            '''
+        },
+        'allApis': {
+            'icon': 'fas fa-list-ul',
+            'title': 'ALL AVAILABLE APIS',
+            'html': '''
+                <div class="api-list">
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/guest_login</div>
+                        <div class="api-desc">Add items using guest UID and password.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/jwt_login</div>
+                        <div class="api-desc">Add items using JWT token.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/access_login</div>
+                        <div class="api-desc">Add items using access token.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/access_to_jwt</div>
+                        <div class="api-desc">Convert access token to JWT.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/guest_to_creds</div>
+                        <div class="api-desc">Generate JWT & access token from guest credentials.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/long_bio_guest</div>
+                        <div class="api-desc">Set long bio using guest UID/password.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/long_bio_jwt</div>
+                        <div class="api-desc">Set long bio using JWT token.</div>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-endpoint">POST /api/guild_action</div>
+                        <div class="api-desc">Join or leave a clan/guild using JWT, access token, or guest credentials.</div>
+                    </div>
+                </div>
+                <div class="result-area" style="background:transparent; border:none; padding:0;">
+                    <p style="margin-top:1rem;">🎯 All endpoints accept JSON payload. Refer to frontend for required fields.</p>
+                </div>
+            '''
+        }
+    }
+    return jsonify(forms.get(feature, forms['guest']))
+
+# ---------- Existing API Endpoints ----------
+@app.route('/api/guest_login', methods=['POST'])
+def api_guest_login():
+    data = request.get_json()
+    uid = data.get('uid', '').strip()
+    password = data.get('password', '').strip()
+    if not uid or not password:
+        return jsonify({'error': 'UID and password are required'}), 400
+    result = guest_login(uid, password)
+    return jsonify({'result': result})
+
+@app.route('/api/jwt_login', methods=['POST'])
+def api_jwt_login():
+    data = request.get_json()
+    token = data.get('token', '').strip()
+    if not token:
+        return jsonify({'error': 'JWT token is required'}), 400
+    result = jwt_login(token)
+    return jsonify({'result': result})
+
+@app.route('/api/access_login', methods=['POST'])
+def api_access_login():
+    data = request.get_json()
+    access_token = data.get('access_token', '').strip()
+    if not access_token:
+        return jsonify({'error': 'Access token is required'}), 400
+    result = access_token_login(access_token)
+    return jsonify({'result': result})
+
+@app.route('/api/access_to_jwt', methods=['POST'])
+def api_access_to_jwt():
+    data = request.get_json()
+    access_token = data.get('access_token', '').strip()
+    if not access_token:
+        return jsonify({'error': 'Access token required'}), 400
+    result = access_to_jwt(access_token)
+    return jsonify({'result': result})
+
+@app.route('/api/guest_to_creds', methods=['POST'])
+def api_guest_to_creds():
+    data = request.get_json()
+    uid = data.get('uid', '').strip()
+    password = data.get('password', '').strip()
+    if not uid or not password:
+        return jsonify({'error': 'UID and password required'}), 400
+    result = guest_to_creds(uid, password)
+    return jsonify({'result': result})
+
+@app.route('/api/long_bio_guest', methods=['POST'])
+def api_long_bio_guest():
+    data = request.get_json()
+    bio = data.get('bio', '').strip()
+    uid = data.get('uid', '').strip()
+    password = data.get('password', '').strip()
+    if not bio or not uid or not password:
+        return jsonify({'error': 'Bio, UID, and password are required'}), 400
+    result = long_bio_guest(bio, uid, password)
+    return jsonify({'result': result})
+
+@app.route('/api/long_bio_jwt', methods=['POST'])
+def api_long_bio_jwt():
+    data = request.get_json()
+    bio = data.get('bio', '').strip()
+    jwt = data.get('jwt', '').strip()
+    if not bio or not jwt:
+        return jsonify({'error': 'Bio and JWT token are required'}), 400
+    result = long_bio_jwt(bio, jwt)
+    return jsonify({'result': result})
+
+# ---------- New Guild Manager Endpoint ----------
+@app.route('/api/guild_action', methods=['POST'])
+def api_guild_action():
+    data = request.get_json()
+    action = data.get('action', '').lower()  # 'join' or 'leave'
+    method = data.get('method', '').lower()  # 'jwt', 'access', 'guest'
+    clan_id = data.get('clan_id', '').strip()
+
+    if not clan_id:
+        return jsonify({'error': 'Clan ID is required'}), 400
+    if action not in ('join', 'leave'):
+        return jsonify({'error': 'Action must be "join" or "leave"'}), 400
+    if method not in ('jwt', 'access', 'guest'):
+        return jsonify({'error': 'Method must be "jwt", "access", or "guest"'}), 400
+
+    if action == 'join':
+        if method == 'jwt':
+            token = data.get('token', '').strip()
+            if not token:
+                return jsonify({'error': 'JWT token required'}), 400
+            result = join_guild_jwt(clan_id, token)
+        elif method == 'access':
+            token = data.get('access_token', '').strip()
+            if not token:
+                return jsonify({'error': 'Access token required'}), 400
+            result = join_guild_access(clan_id, token)
+        else:  # guest
+            uid = data.get('uid', '').strip()
+            password = data.get('password', '').strip()
+            if not uid or not password:
+                return jsonify({'error': 'Guest UID and password required'}), 400
+            result = join_guild_guest(clan_id, uid, password)
+    else:  # leave
+        if method == 'jwt':
+            token = data.get('token', '').strip()
+            if not token:
+                return jsonify({'error': 'JWT token required'}), 400
+            result = leave_guild_jwt(clan_id, token)
+        elif method == 'access':
+            token = data.get('access_token', '').strip()
+            if not token:
+                return jsonify({'error': 'Access token required'}), 400
+            result = leave_guild_access(clan_id, token)
+        else:  # guest
+            uid = data.get('uid', '').strip()
+            password = data.get('password', '').strip()
+            if not uid or not password:
+                return jsonify({'error': 'Guest UID and password required'}), 400
+            result = leave_guild_guest(clan_id, uid, password)
+
+    return jsonify({'result': result})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000, debug=False, threaded=True)    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RIZERxPROFILE | Ultimate Item Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
